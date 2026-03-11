@@ -34,6 +34,147 @@ Everything is captured silently. You review it anytime you want.
 - `/trigger-analysis` — Get improvement recommendations
 - `/reset-learning` — Clear everything and start fresh
 
+### Technical Architecture
+
+This plugin uses Cowork's hook system to operate silently:
+
+**PostToolUse Hook** (Automatic Signal Capture)
+- Triggered after every tool execution (Bash, Read, Write, etc.)
+- Captures: tool name, input, output, success/failure, execution time
+- Inference: derives signals about your preferences and error patterns
+- Storage: appends to `/cowork-learning/patterns.json`
+- Result: No user interaction required
+
+**SessionStart Hook** (Preference Loading)
+- Triggered when you start a new Cowork session
+- Loads: learned preferences from `/cowork-learning/preferences.json`
+- Application: applies learned preferences to initial context
+- Result: System knows your style from the first interaction
+
+**How This Differs from Manual Learning:**
+- Traditional ML: user trains model → explicit labels required
+- Manual feedback: you tell system what's wrong → interrupts your work
+- This plugin: silently observes your feedback through modifications → learns continuously
+
+### Data Flow & Storage
+
+```
+Cowork Session
+    ↓
+Tool Execution (Bash, Read, Write, etc.)
+    ↓
+PostToolUse Hook (triggered automatically)
+    ↓
+4 Skills Process the Signal:
+├─ preference-learner → infers working style
+├─ error-analyzer → captures failures
+├─ pattern-recognizer → finds success patterns
+└─ feedback-integrator → detects your modifications
+    ↓
+Local JSON Storage (/cowork-learning/)
+├─ preferences.json → your style profile
+├─ errors.json → failures and lessons
+├─ patterns.json → what works for you
+└─ feedback.json → your corrections
+    ↓
+SessionStart Hook (next session)
+    ↓
+Your preferences automatically applied
+```
+
+### Git Integration with Cowork
+
+The plugin code itself is version-controlled on GitHub:
+
+**Repository:** `https://github.com/xonline/personal-learning-assistant`
+
+**File Structure:**
+```
+personal-learning-assistant/
+├── .claude-plugin/
+│   └── plugin.json (manifest)
+├── skills/
+│   ├── preference-learner/SKILL.md
+│   ├── error-analyzer/SKILL.md
+│   ├── pattern-recognizer/SKILL.md
+│   └── feedback-integrator/SKILL.md
+├── commands/
+│   ├── show-preferences.md
+│   ├── review-learning.md
+│   ├── trigger-analysis.md
+│   └── reset-learning.md
+├── hooks/
+│   └── hooks.json (PostToolUse & SessionStart)
+├── README.md
+└── LICENSE
+
+```
+
+**Why Git Matters:**
+- Plugin code tracked and versioned on GitHub
+- Easy to share with others
+- Updates can be published as new releases
+- Community can contribute improvements
+- Your learning data stays local (not in Git)
+
+**What's NOT in Git:**
+- `/cowork-learning/` directory — excluded by `.gitignore`
+- Your personal learning data — stays private on your machine
+- Logs or temporary files — excluded by `.gitignore`
+
+### How Cowork Plugins Work (Context for This Plugin)
+
+When you install this plugin in Cowork:
+
+1. **Plugin Installation**
+   - `.plugin` file (ZIP archive) extracted
+   - `plugin.json` read to register skills and commands
+   - Skills registered with Cowork system
+   - Hooks subscribed to events
+
+2. **During Your Session**
+   - Every tool you use (Bash, Read, Write, etc.) → PostToolUse hook fires
+   - Hook passes tool metadata to 4 skills
+   - Skills process and store learning data
+   - You don't see any UI or interruption
+
+3. **When You Request Learning Review**
+   - Run `/review-learning` command
+   - Triggers skill to aggregate all captured data
+   - Formats and presents findings to you
+   - You can approve, correct, or modify
+
+4. **On Next Session Start**
+   - SessionStart hook loads your preferences
+   - System applies what it learned
+   - You benefit from learned preferences immediately
+
+### Why This Architecture Works
+
+**Silent Learning**
+- No modal dialogs asking "Did you like that?"
+- No inline notifications
+- No interruptions to your flow
+- Data captured from *your actions*, not questions
+
+**Local Privacy**
+- Learning data stored in `/cowork-learning/` on your machine
+- Cowork can't see it without filesystem access
+- No cloud services involved
+- You control when to review
+
+**Automatic Improvement**
+- More interactions → better accuracy
+- Learning compounds over time
+- Early models imperfect; later models refined
+- Confidence scores show how much data supports each preference
+
+**On-Demand Control**
+- Review learning whenever you want
+- Correct inaccuracies anytime
+- Reset everything if needed
+- Guide the learning with explicit feedback
+
 ## 🚀 Getting Started
 
 ### First Time
@@ -69,6 +210,34 @@ All learning is stored locally in `/cowork-learning/`:
 ```
 
 **Privacy:** All data stays on your machine. Nothing leaves your laptop.
+
+**Data Format Example (preferences.json):**
+```json
+{
+  "communication_style": {
+    "brevity_preference": {
+      "score": 0.78,
+      "value": "concise",
+      "confidence": 0.82,
+      "observations": 24
+    },
+    "explanation_depth": {
+      "score": 0.65,
+      "value": "moderate",
+      "confidence": 0.71,
+      "observations": 18
+    }
+  },
+  "risk_tolerance": {
+    "verification_level": {
+      "score": 0.45,
+      "value": "ask-first",
+      "confidence": 0.89,
+      "observations": 34
+    }
+  }
+}
+```
 
 ## 💡 Commands Reference
 
@@ -125,6 +294,7 @@ All learning is stored locally in `/cowork-learning/`:
 - ✅ You control what's learned
 - ✅ You can reset anytime
 - ✅ Completely private
+- ✅ Learning data excluded from Git repo
 
 ## ⚙️ How It Learns
 
@@ -226,5 +396,6 @@ If something seems wrong:
 **Author:** Poy
 **Storage:** Local machine only
 **Privacy:** 100% private, nothing leaves your laptop
+**Repository:** https://github.com/xonline/personal-learning-assistant
 
 Enjoy your personal learning assistant! 🚀
