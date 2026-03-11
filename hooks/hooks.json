@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "event": "PostToolUse",
+      "name": "capture-tool-execution-learning",
+      "description": "After any tool executes, capture learning about success/failure, output quality, and tool effectiveness",
+      "prompt": "You are a silent learning observer. A tool just executed in Cowork. Analyze this execution and extract learning signals WITHOUT interrupting the user.\n\n## TOOL EXECUTION DATA:\nTool: {{tool_name}}\nStatus: {{tool_status}}\nOutput: {{tool_output}}\nDuration: {{tool_duration}}\nTokens used: {{token_count}}\n\n## YOUR TASK:\nSilently extract learning from this tool use. Capture:\n\n1. **Tool Effectiveness Signal**\n   - Did tool accomplish its goal? (yes/partial/no)\n   - Was output quality high/medium/low?\n   - Did tool work faster or slower than alternatives?\n   - Confidence in assessment: 0-100\n\n2. **Success Pattern Signal**\n   - Is this a repeated tool use? (Poy uses this tool often)\n   - Was output approved in past without changes? (indicates preference)\n   - Did execution avoid common errors?\n   - Confidence: 0-100\n\n3. **Preference Signal Detected**\n   - Communication style: Brief/detailed? Code examples needed?\n   - Output format: File/inline? Preferred language?\n   - Tool selection: Why was this tool chosen? What does it indicate?\n   - Confidence: 0-100\n\n4. **Potential Error or Issue**\n   - Did anything go wrong? (partial failure, unexpected output)\n   - What was the issue? (syntax, logic, format, approach)\n   - What would Poy want instead?\n   - Severity: Minor/moderate/critical\n\n## OUTPUT FORMAT (JSON only, no other text):\n```json\n{\n  \"timestamp\": \"ISO-8601\",\n  \"tool\": \"tool_name\",\n  \"learning_signals\": [\n    {\n      \"signal_type\": \"tool_effectiveness|success_pattern|preference|error_signal\",\n      \"description\": \"what was learned\",\n      \"confidence\": 0-100,\n      \"severity\": \"minor|moderate|critical\"\n    }\n  ],\n  \"action\": \"log_to_file|flag_for_review|high_priority_flag\",\n  \"files_to_update\": [\"preferences.json\", \"patterns.json\", \"errors.json\"],\n  \"notes\": \"any context for later review\"\n}\n```\n\n## IMPORTANT:\n- DO NOT interrupt the user\n- DO NOT show this analysis\n- DO NOT modify behavior based on this\n- Just quietly log to local files\n- Confidence should reflect certainty (high = seen pattern 5+ times, low = first observation)",
+      "log_to_file": "/cowork-learning/tool-execution-log.json",
+      "type": "prompt"
+    },
+    {
+      "event": "PostToolUse",
+      "name": "detect-user-satisfaction",
+      "description": "Detect if Poy approved/modified output to learn feedback signals",
+      "prompt": "You are a silent feedback observer. Analyze whether Poy approved or modified the tool output.\n\n## ANALYSIS:\nDid Poy:\n1. Approve output without changes? (positive signal) \n2. Request modifications? (preference signal)\n3. Reject output entirely? (error signal)\n4. Provide explicit feedback? (guidance signal)\n\n## LEARNING EXTRACTION:\nBased on approval/modification pattern, extract:\n- What was approved? (confirms preference)\n- What was changed? (reveals preference mismatch)\n- Feedback tone: approval/correction/guidance?\n- Confidence in interpretation: 0-100\n\n## OUTPUT (JSON only):\n```json\n{\n  \"user_action\": \"approved|modified|rejected|provided_feedback\",\n  \"lesson\": \"what does this tell us about preferences?\",\n  \"update_to_file\": \"patterns.json|feedback.json|preferences.json\",\n  \"confidence\": 0-100\n}\n```\n\nDO NOT interrupt. Just log silently.",
+      "log_to_file": "/cowork-learning/user-satisfaction-log.json",
+      "type": "prompt"
+    },
+    {
+      "event": "SessionStart",
+      "name": "load-and-apply-preferences",
+      "description": "At session start, load learned preferences and apply them to Cowork behavior",
+      "prompt": "You are starting a new Cowork session with Poy. Load all learned preferences and apply them silently.\n\n## LOAD FROM FILES:\n1. Read /cowork-learning/preferences.json\n2. Read /cowork-learning/patterns.json\n3. Read /cowork-learning/feedback-lessons.json\n\n## APPLY TO BEHAVIOR:\nBased on loaded preferences:\n- Communication style: Use detected brevity/detail level\n- Risk tolerance: Apply verification level\n- Output format: Use detected format preference (files vs inline)\n- Tool selection: Prefer tools that worked before\n- Pace: Match detected speed vs thoroughness preference\n\n## CONFIDENCE WEIGHTING:\n- Explicit feedback: 100% weight (override everything)\n- High-confidence patterns (>85%): 90% weight\n- Medium-confidence patterns (60-85%): 50% weight\n- Low-confidence patterns (<60%): 20% weight\n- If no preference found: Use sensible defaults\n\n## OUTPUT (JSON):\n```json\n{\n  \"session_start_time\": \"ISO-8601\",\n  \"preferences_loaded\": true,\n  \"applied_settings\": {\n    \"communication_style\": \"value\",\n    \"risk_tolerance\": \"value\",\n    \"output_format\": \"value\",\n    \"preferred_tools\": [\"list\"]\n  },\n  \"confidence_levels\": {\n    \"communication\": 0-100,\n    \"risk_tolerance\": 0-100,\n    \"overall\": 0-100\n  },\n  \"note\": \"silently apply, do not announce\"\n}\n```\n\nApply silently. Do not announce to user.",
+      "log_to_file": "/cowork-learning/session-start-log.json",
+      "type": "prompt"
+    }
+  ]
+}
